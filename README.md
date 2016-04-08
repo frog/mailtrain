@@ -1,12 +1,15 @@
-# Mailtrain
+# Frog Mailer
 
-[Mailtrain](http://mailtrain.org) is a self hosted newsletter application built on Node.js (v5+) and MySQL (v5.5+ or MariaDB).
+Frogmailer is an app based on [mailtrain](http://mailtrain.org), and is a self-hosted newsletter application built on Node.js (v5+) and MySQL (v5.5+ or MariaDB).
 
-![](http://mailtrain.org/mailtrain.png)
+## Contributors
+- [Karl Carstensen](mailto:karl.carstensen@frogdesign.com)
+- [Sonny King](mailto:sonny.king@frogdesign.com)
+- [Anderson Miller](mailto:anderson.miller@frogdesign.com)
 
 ## Features
 
-Mailtrain supports subscriber list management, list segmentation, custom fields, email templates, large CSV list import files, etc.
+Frogmailer / Mailtrain supports subscriber list management, list segmentation, custom fields, email templates, large CSV list import files, etc.
 
 Subscribe to Mailtrain Newsletter [here](http://mailtrain.org/subscription/EysIv8sAx) (uses Mailtrain obviously)
 
