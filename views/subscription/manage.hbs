@@ -1,5 +1,12 @@
 <h2>Update your preferences</h2>
 
+{{#if hasPubkey}}
+    <form method="post" id="download-pubkey" action="/subscription/publickey">
+        <input type="hidden" name="_csrf" value="{{csrfToken}}">
+        <input type="hidden" name="cid" value="{{cid}}">
+    </form>
+{{/if}}
+
 <form method="post" action="/subscription/{{lcid}}/manage">
 
     <input type="hidden" name="_csrf" value="{{csrfToken}}">
@@ -34,6 +41,20 @@
 
             {{#if typeWebsite}}
                 <input type="url" class="form-control" name="{{column}}" value="{{value}}">
+            {{/if}}
+
+            {{#if typeLongtext}}
+                <textarea class="form-control" rows="3" name="{{column}}">{{value}}</textarea>
+            {{/if}}
+
+            {{#if typeGpg}}
+                {{#if ../hasPubkey}}
+                    <div class="pull-right">
+                        <button type="submit" class="btn btn-link btn-xs" form="download-pubkey"><span class="glyphicon glyphicon-cloud-download" aria-hidden="true"></span> Download signature verififcation key</button>
+                    </div>
+                {{/if}}
+                <textarea class="form-control gpg-text" rows="3" name="{{column}}">{{value}}</textarea>
+                <span class="help-block">Insert your GPG public key here to encrypt messages sent to your address <em>(optional)</em></span>
             {{/if}}
 
             {{#if typeDateUs}}

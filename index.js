@@ -8,8 +8,17 @@ let config = require('config');
 let log = require('npmlog');
 let app = require('./app');
 let http = require('http');
+let sender = require('./services/sender');
+let importer = require('./services/importer'); // eslint-disable-line global-require
+let verpServer = require('./services/verp-server'); // eslint-disable-line global-require
+let testServer = require('./services/test-server'); // eslint-disable-line global-require
 
 let port = config.www.port;
+let host = config.www.host;
+
+if (config.title) {
+    process.title = config.title;
+}
 
 log.level = config.log.level;
 app.set('port', port);
@@ -24,7 +33,7 @@ let server = http.createServer(app);
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
+server.listen(port, host);
 
 server.on('error', err => {
     if (err.syscall !== 'listen') {
@@ -53,8 +62,30 @@ server.on('listening', () => {
     let bind = typeof addr === 'string' ? 'pipe ' + addr : 'port ' + addr.port;
     log.info('Express', 'WWW server listening on %s', bind);
 
-    // start sending loop
-    require('./services/sender'); // eslint-disable-line global-require
-    require('./services/importer'); // eslint-disable-line global-require
-    require('./services/testserver'); // eslint-disable-line global-require
+    // start additional services
+    testServer(() => {
+        verpServer(() => {
+            importer(() => {
+                sender(() => {
+                    log.info('Service', 'All services started');
+                    if (config.group) {
+                        try {
+                            process.setgid(config.group);
+                            log.info('Service', 'Changed group to "%s" (%s)', config.group, process.getgid());
+                        } catch (E) {
+                            log.info('Service', 'Failed changed group to "%s"', config.group);
+                        }
+                    }
+                    if (config.user) {
+                        try {
+                            process.setuid(config.user);
+                            log.info('Service', 'Changed user to "%s" (%s)', config.user, process.getuid());
+                        } catch (E) {
+                            log.info('Service', 'Failed changed user to "%s"', config.user);
+                        }
+                    }
+                });
+            });
+        });
+    });
 });

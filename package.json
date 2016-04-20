@@ -1,7 +1,7 @@
 {
   "name": "mailtrain",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Self hosted email newsletter app",
   "main": "index.js",
   "scripts": {
@@ -15,23 +15,23 @@
   "author": "Andris Reinman",
   "license": "GPL-3.0",
   "homepage": "http://mailtrain.org",
-  "engines" : {
-    "node" : ">=5.0.0"
+  "engines": {
+    "node": ">=5.0.0"
   },
   "devDependencies": {
     "grunt": "^1.0.1",
     "grunt-cli": "^1.2.0",
     "grunt-contrib-nodeunit": "^1.0.0",
-    "grunt-eslint": "^18.0.0"
+    "grunt-eslint": "^18.1.0"
   },
   "dependencies": {
     "bcrypt-nodejs": "0.0.3",
     "body-parser": "^1.15.0",
+    "bounce-handler": "^7.3.2-fork.0",
     "compression": "^1.6.1",
-    "config": "^1.20.0",
+    "config": "^1.20.1",
     "connect-flash": "^0.1.1",
     "connect-redis": "^3.0.2",
-    "content-security-policy": "^0.2.0",
     "cookie-parser": "^1.4.1",
     "csurf": "^1.8.3",
     "csv-parse": "^1.0.4",
@@ -46,11 +46,13 @@
     "morgan": "^1.7.0",
     "multer": "^1.1.0",
     "mysql": "^2.10.2",
-    "nodemailer": "^2.3.1",
+    "nodemailer": "^2.3.2",
+    "nodemailer-openpgp": "^1.0.2",
     "npmlog": "^2.0.3",
+    "openpgp": "^2.2.1",
     "passport": "^0.3.2",
     "passport-local": "^1.0.0",
-    "request": "^2.70.0",
+    "request": "^2.71.0",
     "serve-favicon": "^2.3.0",
     "shortid": "^2.2.6",
     "slugify": "^0.1.1",
