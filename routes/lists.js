@@ -18,6 +18,7 @@ let uploads = multer({
 });
 let csvparse = require('csv-parse');
 let fs = require('fs');
+let moment = require('moment-timezone');
 
 router.all('/*', (req, res, next) => {
     if (!req.user) {
@@ -278,6 +279,18 @@ router.get('/subscription/:id/add', passport.csrfProtection, (req, res) => {
             data.customFields = fields.getRow(fieldList, data, false, true);
             data.useEditor = true;
 
+            data.timezones = moment.tz.names().map(tz => {
+                let selected = false;
+                if (tz.toLowerCase().trim() === (data.tz || 'UTC').toLowerCase().trim()) {
+                    selected = true;
+                }
+                return {
+                    key: tz,
+                    value: tz,
+                    selected
+                };
+            });
+
             res.render('lists/subscription/add', data);
         });
     });
@@ -307,6 +320,27 @@ router.get('/subscription/:id/edit/:cid', passport.csrfProtection, (req, res) =>
                 subscription.customFields = fields.getRow(fieldList, subscription, false, true);
                 subscription.useEditor = true;
                 subscription.isSubscribed = subscription.status === 1;
+
+                let tzfound = false;
+                subscription.timezones = moment.tz.names().map(tz => {
+                    let selected = false;
+                    if (tz.toLowerCase().trim() === (subscription.tz || '').toLowerCase().trim()) {
+                        selected = true;
+                        tzfound = true;
+                    }
+                    return {
+                        key: tz,
+                        value: tz,
+                        selected
+                    };
+                });
+                if (!tzfound && subscription.tz) {
+                    subscription.timezones.push({
+                        key: subscription.tz,
+                        value: subscription.tz,
+                        selected: true
+                    });
+                }
 
                 res.render('lists/subscription/edit', subscription);
             });
@@ -548,7 +582,7 @@ router.post('/subscription/import-confirm', passport.parseForm, passport.csrfPro
                     fieldList = [];
                 }
 
-                let allowedColumns = ['email', 'first_name', 'last_name'];
+                let allowedColumns = ['email', 'first_name', 'last_name', 'tz'];
                 fieldList.forEach(field => {
                     if (field.column) {
                         allowedColumns.push(field.column);

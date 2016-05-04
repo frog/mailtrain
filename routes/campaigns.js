@@ -9,6 +9,7 @@ let settings = require('../lib/models/settings');
 let tools = require('../lib/tools');
 let striptags = require('striptags');
 let passport = require('../lib/passport');
+let htmlescape = require('escape-html');
 
 router.all('/*', (req, res, next) => {
     if (!req.user) {
@@ -20,43 +21,8 @@ router.all('/*', (req, res, next) => {
 });
 
 router.get('/', (req, res) => {
-    let limit = 999999999;
-    let start = 0;
-
-    campaigns.list(start, limit, (err, rows, total) => {
-        if (err) {
-            req.flash('danger', err.message || err);
-            return res.redirect('/');
-        }
-
-        res.render('campaigns/campaigns', {
-            rows: rows.map((row, i) => {
-                row.index = start + i + 1;
-                row.description = striptags(row.description);
-                switch (row.status) {
-                    case 1:
-                        row.statusText = 'Idling';
-                        break;
-                    case 2:
-                        if (row.scheduled && row.scheduled > new Date()) {
-                            row.statusText = 'Scheduled';
-                        } else {
-                            row.statusText = 'Sending';
-                        }
-                        break;
-                    case 3:
-                        row.statusText = 'Finished';
-                        break;
-                    case 4:
-                        row.statusText = 'Paused';
-                        break;
-                }
-                row.createdTimestamp = row.created.getTime();
-                row.created = row.created.toISOString();
-                return row;
-            }),
-            total
-        });
+    res.render('campaigns/campaigns', {
+        title: 'Campaigns'
     });
 });
 
@@ -117,20 +83,28 @@ router.get('/create', passport.csrfProtection, (req, res) => {
                 data.address = data.address || configItems.defaultAddress;
                 data.subject = data.subject || configItems.defaultSubject;
 
-                res.render('campaigns/create', data);
+                let view;
+                switch (req.query.type) {
+                    case 'rss':
+                        view = 'campaigns/create-rss';
+                        break;
+                    default:
+                        view = 'campaigns/create';
+                }
+                res.render(view, data);
             });
         });
     });
 });
 
 router.post('/create', passport.parseForm, passport.csrfProtection, (req, res) => {
-    campaigns.create(req.body, (err, id) => {
+    campaigns.create(req.body, false, (err, id) => {
         if (err || !id) {
             req.flash('danger', err && err.message || err || 'Could not create campaign');
             return res.redirect('/campaigns/create?' + tools.queryParams(req.body));
         }
         req.flash('success', 'Campaign “' + req.body.name + '” created');
-        res.redirect('/campaigns/edit/' + id + '?tab=template');
+        res.redirect('/campaigns/view/' + id);
     });
 });
 
@@ -173,7 +147,17 @@ router.get('/edit/:id', passport.csrfProtection, (req, res, next) => {
                 campaign.showGeneral = req.query.tab === 'general' || !req.query.tab;
                 campaign.showTemplate = req.query.tab === 'template';
 
-                res.render('campaigns/edit', campaign);
+                let view;
+                switch (campaign.type) {
+                    case 2: //rss
+                        view = 'campaigns/edit-rss';
+                        break;
+                    case 1:
+                    default:
+                        view = 'campaigns/edit';
+                }
+
+                res.render(view, campaign);
             });
         });
     });
@@ -211,6 +195,51 @@ router.post('/delete', passport.parseForm, passport.csrfProtection, (req, res) =
     });
 });
 
+router.post('/ajax', (req, res) => {
+    campaigns.filter(req.body, Number(req.query.parent) || false, (err, data, total, filteredTotal) => {
+        if (err) {
+            return res.json({
+                error: err.message || err,
+                data: []
+            });
+        }
+
+        let getStatusText = data => {
+            switch (data.status) {
+                case 1:
+                    return 'Idling';
+                case 2:
+                    if (data.scheduled && data.scheduled > new Date()) {
+                        return 'Scheduled';
+                    }
+                    return 'Sending';
+                case 3:
+                    return 'Finished';
+                case 4:
+                    return 'Paused';
+                case 5:
+                    return 'Inactive';
+                case 6:
+                    return 'Active';
+            }
+            return 'Other';
+        };
+
+        res.json({
+            draw: req.body.draw,
+            recordsTotal: total,
+            recordsFiltered: filteredTotal,
+            data: data.map((row, i) => [
+                (Number(req.body.start) || 0) + 1 + i,
+                '<span class="glyphicon glyphicon-inbox" aria-hidden="true"></span> <a href="/campaigns/view/' + row.id + '">' + htmlescape(row.name || '') + '</a>',
+                htmlescape(striptags(row.description) || ''),
+                getStatusText(row),
+                '<span class="datestring" data-date="' + row.created.toISOString() + '" title="' + row.created.toISOString() + '">' + row.created.toISOString() + '</span>'
+            ].concat('<span class="glyphicon glyphicon-wrench" aria-hidden="true"></span><a href="/campaigns/edit/' + row.id + '">Edit</a>'))
+        });
+    });
+});
+
 router.get('/view/:id', passport.csrfProtection, (req, res) => {
     campaigns.get(req.params.id, true, (err, campaign) => {
         if (err || !campaign) {
@@ -231,6 +260,11 @@ router.get('/view/:id', passport.csrfProtection, (req, res) => {
             campaign.isSending = campaign.status === 2;
             campaign.isFinished = campaign.status === 3;
             campaign.isPaused = campaign.status === 4;
+            campaign.isInactive = campaign.status === 5;
+            campaign.isActive = campaign.status === 6;
+
+            campaign.isNormal = campaign.type === 1 || campaign.type === 3;
+            campaign.isRss = campaign.type === 2;
 
             campaign.isScheduled = campaign.scheduled && campaign.scheduled > new Date();
 
@@ -304,6 +338,34 @@ router.post('/reset', passport.parseForm, passport.csrfProtection, (req, res) =>
 
 router.post('/pause', passport.parseForm, passport.csrfProtection, (req, res) => {
     campaigns.pause(req.body.id, (err, reset) => {
+        if (err) {
+            req.flash('danger', err && err.message || err);
+        } else if (reset) {
+            req.flash('success', 'Sending paused');
+        } else {
+            req.flash('info', 'Could not pause sending');
+        }
+
+        return res.redirect('/campaigns/view/' + encodeURIComponent(req.body.id));
+    });
+});
+
+router.post('/activate', passport.parseForm, passport.csrfProtection, (req, res) => {
+    campaigns.activate(req.body.id, (err, reset) => {
+        if (err) {
+            req.flash('danger', err && err.message || err);
+        } else if (reset) {
+            req.flash('success', 'Sending activated');
+        } else {
+            req.flash('info', 'Could not activate sending');
+        }
+
+        return res.redirect('/campaigns/view/' + encodeURIComponent(req.body.id));
+    });
+});
+
+router.post('/inactivate', passport.parseForm, passport.csrfProtection, (req, res) => {
+    campaigns.inactivate(req.body.id, (err, reset) => {
         if (err) {
             req.flash('danger', err && err.message || err);
         } else if (reset) {

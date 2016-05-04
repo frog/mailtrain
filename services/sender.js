@@ -22,8 +22,9 @@ function findUnsent(callback) {
             return callback(err);
         }
 
-        let query = 'SELECT `id`, `list`, `segment` FROM `campaigns` WHERE `status`=? AND (`scheduled` IS NULL OR `scheduled` <= NOW()) LIMIT 1';
-        connection.query(query, [2], (err, rows) => {
+        // Find "normal" campaigns. Ignore RSS and drip campaigns at this point
+        let query = 'SELECT `id`, `list`, `segment` FROM `campaigns` WHERE `status`=? AND (`scheduled` IS NULL OR `scheduled` <= NOW()) AND `type` IN (?, ?) LIMIT 1';
+        connection.query(query, [2, 1, 3], (err, rows) => {
             if (err) {
                 connection.release();
                 return callback(err);
@@ -52,6 +53,11 @@ function findUnsent(callback) {
                 }
 
                 let tryNext = () => {
+
+                    // TODO: Add support for localized sending time. In this case campaign messages are
+                    //       not sent before receiver's local time reaches defined time
+                    // SELECT * FROM subscription__1 LEFT JOIN tzoffset ON tzoffset.tz=subscription__1.tz WHERE NOW() + INTERVAL IFNULL(`offset`,0) MINUTE >= localtime
+
                     let query = 'SELECT * FROM `subscription__' + campaign.list + '` subscription WHERE status=1 ' + (queryData.where ? ' AND (' + queryData.where + ')' : '') + ' AND NOT EXISTS (SELECT 1 FROM `campaign__' + campaign.id + '` campaign WHERE campaign.list = ? AND campaign.segment = ? AND campaign.subscription = subscription.id) LIMIT 1';
 
                     connection.query(query, queryData.values.concat([campaign.list, campaign.segment]), (err, rows) => {
@@ -227,25 +233,25 @@ function formatMessage(message, callback) {
                         });
                     };
 
-                    if (campaign.templateUrl) {
+                    if (campaign.sourceUrl) {
                         let form = tools.getMessageLinks(configItems.serviceUrl, campaign, list, message.subscription);
                         Object.keys(message.subscription.mergeTags).forEach(key => {
                             form[key] = message.subscription.mergeTags[key];
                         });
                         request.post({
-                            url: campaign.templateUrl,
+                            url: campaign.sourceUrl,
                             form
                         }, (err, httpResponse, body) => {
                             if (err) {
                                 return callback(err);
                             }
                             if (httpResponse.statusCode !== 200) {
-                                return callback(new Error('Received status code ' + httpResponse.statusCode + ' from ' + campaign.templateUrl));
+                                return callback(new Error('Received status code ' + httpResponse.statusCode + ' from ' + campaign.sourceUrl));
                             }
                             renderAndSend(body && body.toString(), '', false);
                         });
                     } else {
-                        renderAndSend(campaign.html, campaign.text, true);
+                        renderAndSend(campaign.htmlPrepared || campaign.html, campaign.text, true);
                     }
                 });
             });
