@@ -1,0 +1,115 @@
+<ol class="breadcrumb">
+    <li><a href="/">Home</a></li>
+    <li class="active">API</li>
+</ol>
+
+<h2>API</h2>
+
+<hr>
+
+<div class="panel panel-default">
+    <div class="panel-body">
+        <div class="pull-right">
+            <form class="form-horizontal confirm-submit" {{#if accessToken}} data-confirm-message="Are you sure? Resetting would invalidate the currently existing token." {{else}} data-confirm-message="Are you sure?" {{/if}} method="post" action="/users/api/reset-token">
+                <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                <button type="submit" class="btn btn-info"><span class="glyphicon glyphicon-retweet" aria-hidden="true"></span>
+                    {{#if accessToken}}
+                        Reset Access Token
+                    {{else}}
+                        Generate Access Token
+                    {{/if}}
+                </button>
+            </form>
+        </div>
+        {{#if accessToken}}
+            Personal access token: <code>{{accessToken}}</code>
+        {{else}}
+            Access token not yet generated
+        {{/if}}
+    </div>
+</div>
+
+<div class="well">
+
+    <h3>Notes about the API</h3>
+
+    <ul>
+        <li>
+            API response is a JSON structure with <code>error</code> and <code>data</code> properties. If the response <code>error</code> has a value set then the request failed.
+        </li>
+        <li>
+            You need to define proper <code>Content-Type</code> when making a request. You can either use <code>application/x-www-form-urlencoded</code> for normal form data or <code>application/json</code> for a JSON payload. Using <code>multipart/form-data</code>            is not supported.
+        </li>
+    </ul>
+</div>
+
+<h3>POST /api/subscribe/:listId – Add subscription</h3>
+
+<p>
+    This API call either inserts a new subscription or updates existing. Fields not included are left as is, so if you update only LAST_NAME value, then FIRST_NAME is kept untouched for an existing subscription.
+</p>
+
+<p>
+    <strong>GET</strong> arguments
+</p>
+<ul>
+    <li><strong>access_token</strong> – your personal access token
+</ul>
+
+<p>
+    <strong>POST</strong> arguments
+</p>
+<ul>
+    <li><strong>EMAIL</strong> – subscriber's email address (<em>required</em>)</li>
+    <li><strong>FIRST_NAME</strong> – subscriber's first name</li>
+    <li><strong>LAST_NAME</strong> – subscriber's last name</li>
+    <li><strong>TIMEZONE</strong> – subscriber's timezone (eg. "Europe/Tallinn", "PST" or "UTC"). If not set defaults to "UTC"</li>
+    <li><strong>MERGE_TAG_VALUE</strong> – custom field value. Use yes/no for option group values (checkboxes, radios, drop downs)</li>
+</ul>
+
+<p>
+    Additional <strong>POST</strong> arguments:
+</p>
+
+<ul>
+    <li>
+        <strong>FORCE_SUBSCRIBE</strong> – set to "yes" if you want to make sure the email is marked as subscribed even if it was previously marked as unsubscribed. If the email was already unsubscribed/blocked then subscription status is not changed by default.
+    </li>
+    <li>
+        <strong>REQUIRE_CONFIRMATION</strong> – set to "yes" if you want to send confirmation email to the subscriber before actually marking as subscribed
+    </li>
+</ul>
+
+<p>
+    <strong>Example</strong>
+</p>
+
+<pre>curl -XPOST {{serviceUrl}}api/subscribe/B16uVTdW?access_token={{accessToken}}\
+--data 'EMAIL=test@example.com&amp;MERGE_CHECKBOX=yes&amp;REQUIRE_CONFIRMATION=yes'</pre>
+
+<h3>POST /api/unsubscribe/:listId – Remove subscription</h3>
+
+<p>
+    This API call marks a subscription as unsubscribed
+</p>
+
+<p>
+    <strong>GET</strong> arguments
+</p>
+<ul>
+    <li><strong>access_token</strong> – your personal access token
+</ul>
+
+<p>
+    <strong>POST</strong> arguments
+</p>
+<ul>
+    <li><strong>EMAIL</strong> – subscriber's email address (<em>required</em>)
+</ul>
+
+<p>
+    <strong>Example</strong>
+</p>
+
+<pre>curl -XPOST {{serviceUrl}}api/unsubscribe/B16uVTdW?access_token={{accessToken}}\
+--data 'EMAIL=test@example.com'</pre>

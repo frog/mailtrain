@@ -7,6 +7,8 @@ Frogmailer is an app based on [mailtrain](http://mailtrain.org), and is a self-h
 - [Sonny King](mailto:sonny.king@frogdesign.com)
 - [Anderson Miller](mailto:anderson.miller@frogdesign.com)
 
+> **NB!** I'm running an IndieGoGo campaign to help fund developing first class automation support into Mailtrain. See all details here: [https://igg.me/at/mailtrain/8720095](https://igg.me/at/mailtrain/8720095)
+
 ## Features
 
 Frogmailer / Mailtrain supports subscriber list management, list segmentation, custom fields, email templates, large CSV list import files, etc.

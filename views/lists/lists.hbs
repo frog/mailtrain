@@ -12,13 +12,16 @@
 <hr>
 
 <div class="table-responsive">
-    <table class="table table-bordered table-hover data-table display nowrap" width="100%" data-row-sort="0,1,1,0,0">
+    <table class="table table-bordered table-hover data-table display nowrap" width="100%" data-row-sort="0,1,1,1,0,0">
         <thead>
             <th class="col-md-1">
                 #
             </th>
             <th>
                 Name
+            </th>
+            <th class="col-md-2">
+                ID
             </th>
             <th class="col-md-1">
                 Subscribers
@@ -45,10 +48,13 @@
                         </a>
                         </td>
                         <td>
-                            <p class="text-center">{{subscribers}}</p>
+                            <code>{{cid}}</code>
                         </td>
-                        <td>
-                            <p class="text-muted">{{description}}</p>
+                        <td class="text-center">
+                            {{subscribers}}
+                        </td>
+                        <td class="text-muted">
+                            {{description}}
                         </td>
                         <td>
                             <span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
