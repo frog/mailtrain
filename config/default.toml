@@ -8,7 +8,7 @@
 title="mailtrain"
 
 [log]
-level="silly"
+level="verbose"
 
 [www]
 # HTTP port to listen on
@@ -31,7 +31,7 @@ host="localhost"
 user="mailtrain"
 password="mailtrain"
 database="mailtrain"
-port=3306 # some installations, eg. MAMP can use a different port (8889)
+port=3306 # some installations, eg. MAMP can use a different port (8889). MAMP users should turn on "Allow network access to MySQL" 
 charset="utf8mb4"
 timezone="local"
 
@@ -41,6 +41,7 @@ enabled=false
 host="localhost"
 port=6379
 db=5
+# password=""
 
 [verp]
 enabled=false
@@ -51,3 +52,6 @@ host="0.0.0.0"
 enabled=false
 port=5587
 host="0.0.0.0"
+username="testuser"
+password="testpass"
+logger=false

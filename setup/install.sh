@@ -12,12 +12,11 @@ curl -sL https://deb.nodesource.com/setup_6.x | bash -
 apt-get -q -y install mysql-server pwgen redis-server nodejs git ufw
 apt-get clean
 
-HOSTNAME=$(curl -s http://169.254.169.254/metadata/v1/hostname)
 MYSQL_PASSWORD=`pwgen -1`
 
 # Setup MySQL user for Mailtrain
 mysql -u root -e "CREATE USER 'mailtrain'@'localhost' IDENTIFIED BY '$MYSQL_PASSWORD';"
-mysql -u root -e "GRANT ALL PRIVILEGES ON mailtrain.* TO 'mailtrain'@'%' WITH GRANT OPTION;"
+mysql -u root -e "GRANT ALL PRIVILEGES ON mailtrain.* TO 'mailtrain'@'localhost';"
 mysql -u mailtrain --password="$MYSQL_PASSWORD" -e "CREATE database mailtrain;"
 
 # Enable firewall, allow connections to SSH, HTTP, HTTPS and SMTP
@@ -28,12 +27,9 @@ ufw allow 25/tcp
 ufw --force enable
 
 # Fetch Mailtrain files
-cd /opt
-git clone git://github.com/andris9/mailtrain.git
-cd mailtrain
-
-# Set up upstart service script
-cp setup/mailtrain.conf /etc/init
+mkdir -p /opt/mailtrain
+cd /opt/mailtrain
+git clone git://github.com/andris9/mailtrain.git .
 
 # Add new user for the daemon to run as
 useradd mailtrain || true
@@ -52,7 +48,7 @@ password="$MYSQL_PASSWORD"
 [redis]
 enabled=true
 [verp]
-enabled=true
+enabled=false
 EOT
 
 # Install required node packages
@@ -71,6 +67,15 @@ cat <<EOM > /etc/logrotate.d/mailtrain
     nomail
 }
 EOM
+
+if [ -d "/run/systemd/system" ]; then
+    # Set up systemd service script
+    cp setup/mailtrain.service /etc/systemd/system/
+    systemctl enable mailtrain.service
+else
+    # Set up upstart service script
+    cp setup/mailtrain.conf /etc/init/
+fi
 
 # Start the service
 service mailtrain start

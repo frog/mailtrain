@@ -87,6 +87,31 @@
 
             {{#if isNormal}}
 
+                <dt>Preview campaign as</dt>
+                <dd>
+                    <form method="post" action="/campaigns/preview/{{id}}" class="form-inline">
+                        <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                        <input type="hidden" name="campaign" value="{{cid}}">
+                        <input type="hidden" name="list" value="{{list.cid}}">
+                        <input type="hidden" name="listId" value="{{list.id}}">
+                        <div class="form-group">
+                            <select name="subscriber" class="form-control" required>
+                                {{#each testUsers}}
+                                    <option value="{{cid}}">{{displayName}}</option>
+                                {{/each}}
+                                {{#if testUsers}}
+                                    <optgroup label="Actions">
+                                        <option value="_create">Add new test user ...</option>
+                                    </optgroup>
+                                {{else}}
+                                    <option value="_create">No test users yet, create one here ...</option>
+                                {{/if}}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-default">Go</button>
+                    </form>
+                </dd>
+
                 {{#unless isIdling}}
                     <dt>Delivered <a href="/campaigns/status/{{id}}/delivered" title="List subscribers who received this message"><span class="glyphicon glyphicon-zoom-in" aria-hidden="true"></span></a></dt>
                     <dd>{{delivered}}</dd>
@@ -204,19 +229,27 @@
                                     </button>
                                 </form>
                             </div>
-                            <h4>Sending…</h4>
+                            <h4><span class="glyphicon glyphicon-refresh spinning"></span> Sending…</h4>
                         {{/if}}
                     {{/if}}
 
                     {{#if isPaused}}
                         <div class="pull-right">
-                            <form class="form-horizontal confirm-submit" data-confirm-message="Are you sure? This action would resume sending messages to the selected list" method="post" action="/campaigns/resume">
+                            <form id="resume-sending" class="form-horizontal confirm-submit" data-confirm-message="Are you sure? This action would resume sending messages to the selected list" method="post" action="/campaigns/resume">
                                 <input type="hidden" name="_csrf" value="{{csrfToken}}">
                                 <input type="hidden" name="id" value="{{id}}" />
-
-                                <button type="submit" class="btn btn-info"><span class="glyphicon glyphicon-play" aria-hidden="true"></span> Resume
-                                </button>
                             </form>
+
+                            <form id="reset-sending" class="confirm-submit" data-confirm-message="Are you sure? This action would reset all stats about current progress" method="post" action="/campaigns/reset">
+                                <input type="hidden" name="_csrf" value="{{csrfToken}}">
+                                <input type="hidden" name="id" value="{{id}}" />
+                            </form>
+
+                            <button type="submit" form="resume-sending" class="btn btn-info"><span class="glyphicon glyphicon-play" aria-hidden="true"></span> Resume
+                            </button>
+
+                            <button type="submit" form="reset-sending" class="btn btn-danger"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Reset
+                            </button>
                         </div>
                         <h4>Sending paused</h4>
                     {{/if}}
