@@ -7,8 +7,6 @@ Frogmailer is an app based on [mailtrain](http://mailtrain.org), and is a self-h
 - [Sonny King](mailto:sonny.king@frogdesign.com)
 - [Anderson Miller](mailto:anderson.miller@frogdesign.com)
 
-> **NB!** I'm running an IndieGoGo campaign to help fund developing first class automation support into Mailtrain. See all details here: [https://igg.me/at/mailtrain/8720095](https://igg.me/at/mailtrain/8720095)
-
 ## Features
 
 Frogmailer / Mailtrain supports subscriber list management, list segmentation, custom fields, email templates, large CSV list import files, etc.
@@ -30,10 +28,26 @@ Subscribe to Mailtrain Newsletter [here](http://mailtrain.org/subscription/EysIv
 
 ## Installation
 
-### Automatic install (Ubuntu 14.04)
+### Automatic install (Ubuntu)
 
-You can download and run [install.sh](setup/install.sh) in your blank Ubuntu 14.04 VPS to set up
-Mailtrain and all required dependencies (including MySQL).
+You can download and run [install.sh](setup/install.sh) in your blank Ubuntu VPS to set up
+Mailtrain and all required dependencies (including MySQL). The installation script assumes a somewhat blank server, so if this is a machine you are already using for something else, you might want to skip the automatic install and proceed manually.
+
+If you like living on the edge and feel adventurous you can run the installation script directly from your command line as root:
+
+```
+curl https://raw.githubusercontent.com/andris9/mailtrain/master/setup/install.sh | sudo bash
+```
+
+Install script installs and sets up the following:
+
+  * **Node.js** (version 6.x)
+  * **MySQL** (platform default)
+  * **Mailtrain** (from the master branch) on port 80
+  * **UFW** firewall that blocks everything besides ports 22, 25, 80, 443
+  * **Redis** server for session cache
+  * **logrotate** to rotate Mailtrain log files
+  * **upstart** or **systemd** init script to automatically start and manage Mailtrain process
 
 If you are using DigitalOcean then you can copy the contents of the [installation script](setup/install.sh) to the User Data textarea field when creating a new VPS (select Ubuntu 14.04 as the droplet Distribution image). After your droplet is created it should already have Mailtrain up and running. Navigate to http://droplet-hostname-or-ip/ and authenticate as `admin`:`test`. Do not forget to update your account information and set up SMTP settings.
 
@@ -100,6 +114,18 @@ Mailtrain uses webhooks integration to detect bounces and spam complaints. Curre
   * **Mailgun** – use `http://domain/webhooks/mailgun` as the webhook URL for bounces and complaints ([instructions](https://github.com/andris9/mailtrain/wiki/Setting-up-Webhooks-for-Mailgun))
 
 Additionally Mailtrain (v1.1+) is able to use VERP-based bounce handling. This would require to have a compatible SMTP relay (the services mentioned above strip out or block VERP addresses in the SMTP envelope) and you also need to set up special MX DNS name that points to your Mailtrain installation server.
+
+## Testing
+
+There is a built in /dev/null server in Mailtrain that you can use to load test your installation. Check the `[testserver]` section in the configuration file for details. By default the test server is disabled. The server uses only cleartext connections, so select "Do not use encryption" in the encryption settings when setting up the server data in Mailtrain.
+
+Additionally you can generate CSV import files with fake subscriber data:
+
+```
+node setup/fakedata.js > somefile.csv
+```
+
+This command generates a CSV file with 100 000 subscriber accounts
 
 ## License
 

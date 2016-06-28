@@ -6,6 +6,7 @@ let lists = require('../lib/models/lists');
 let fields = require('../lib/models/fields');
 let templates = require('../lib/models/templates');
 let campaigns = require('../lib/models/campaigns');
+let subscriptions = require('../lib/models/subscriptions');
 let settings = require('../lib/models/settings');
 let tools = require('../lib/tools');
 let striptags = require('striptags');
@@ -89,6 +90,9 @@ router.get('/create', passport.csrfProtection, (req, res) => {
                     case 'rss':
                         view = 'campaigns/create-rss';
                         break;
+                    case 'triggered':
+                        view = 'campaigns/create-triggered';
+                        break;
                     default:
                         view = 'campaigns/create';
                 }
@@ -150,6 +154,9 @@ router.get('/edit/:id', passport.csrfProtection, (req, res, next) => {
 
                 let view;
                 switch (campaign.type) {
+                    case 4: //triggered
+                        view = 'campaigns/edit-triggered';
+                        break;
                     case 2: //rss
                         view = 'campaigns/edit-rss';
                         break;
@@ -158,55 +165,72 @@ router.get('/edit/:id', passport.csrfProtection, (req, res, next) => {
                         view = 'campaigns/edit';
                 }
 
-                lists.get(campaign.list, (err, list) => {
+                let getList = (listId, callback) => {
+                    lists.get(listId, (err, list) => {
+                        if (err) {
+                            return callback(err);
+                        }
+                        if (!list) {
+                            return callback(new Error('Selected list not found'));
+                        }
+
+                        fields.list(list.id, (err, fieldList) => {
+                            if (err && !fieldList) {
+                                fieldList = [];
+                            }
+
+                            let mergeTags = [
+                                // keep indentation
+                                {
+                                    key: 'LINK_UNSUBSCRIBE',
+                                    value: 'URL that points to the preferences page of the subscriber'
+                                }, {
+                                    key: 'LINK_PREFERENCES',
+                                    value: 'URL that points to the unsubscribe page'
+                                }, {
+                                    key: 'LINK_BROWSER',
+                                    value: 'URL to preview the message in a browser'
+                                }, {
+                                    key: 'FIRST_NAME',
+                                    value: 'First name'
+                                }, {
+                                    key: 'LAST_NAME',
+                                    value: 'Last name'
+                                }, {
+                                    key: 'FULL_NAME',
+                                    value: 'Full name (first and last name combined)'
+                                }, {
+                                    key: 'SUBSCRIPTION_ID',
+                                    value: 'Unique ID that identifies the recipient'
+                                }, {
+                                    key: 'LIST_ID',
+                                    value: 'Unique ID that identifies the list used for this campaign'
+                                }, {
+                                    key: 'CAMPAIGN_ID',
+                                    value: 'Unique ID that identifies current campaign'
+                                }
+                            ];
+
+                            fieldList.forEach(field => {
+                                mergeTags.push({
+                                    key: field.key,
+                                    value: field.name
+                                });
+                            });
+
+                            return callback(null, list, mergeTags);
+                        });
+                    });
+                };
+
+                getList(campaign.list, (err, list, mergeTags) => {
                     if (err) {
                         req.flash('danger', err.message || err);
                         return res.redirect('/');
                     }
-                    if (!list) {
-                        req.flash('danger', 'Selected list does not exist');
-                        res.render(view, campaign);
-                        return;
-                    }
 
-                    fields.list(list.id, (err, fieldList) => {
-                        if (err && !fieldList) {
-                            fieldList = [];
-                        }
-
-                        let mergeTags = [
-                            // indent
-                            {
-                                key: 'LINK_UNSUBSCRIBE',
-                                value: 'URL that points to the preferences page of the subscriber'
-                            }, {
-                                key: 'LINK_PREFERENCES',
-                                value: 'URL that points to the unsubscribe page'
-                            }, {
-                                key: 'LINK_BROWSER',
-                                value: 'URL to preview the message in a browser'
-                            }, {
-                                key: 'FIRST_NAME',
-                                value: 'First name'
-                            }, {
-                                key: 'LAST_NAME',
-                                value: 'Last name'
-                            }, {
-                                key: 'FULL_NAME',
-                                value: 'Full name (first and last name combined)'
-                            }
-                        ];
-
-                        fieldList.forEach(field => {
-                            mergeTags.push({
-                                key: field.key,
-                                value: field.name
-                            });
-                        });
-
-                        campaign.mergeTags = mergeTags;
-                        res.render(view, campaign);
-                    });
+                    campaign.mergeTags = mergeTags;
+                    res.render(view, campaign);
                 });
             });
         });
@@ -262,7 +286,7 @@ router.post('/ajax', (req, res) => {
                     if (data.scheduled && data.scheduled > new Date()) {
                         return 'Scheduled';
                     }
-                    return 'Sending';
+                    return '<span class="glyphicon glyphicon-refresh spinning"></span> Sending…';
                 case 3:
                     return 'Finished';
                 case 4:
@@ -297,14 +321,33 @@ router.get('/view/:id', passport.csrfProtection, (req, res) => {
             return res.redirect('/campaigns');
         }
 
-        lists.get(campaign.list, (err, list) => {
-            if (err || !campaign) {
+        let getList = (listId, callback) => {
+            lists.get(listId, (err, list) => {
+                if (err) {
+                    return callback(err);
+                }
+                if (!list) {
+                    return callback(new Error('Selected list not found'));
+                }
+                subscriptions.listTestUsers(listId, (err, testUsers) => {
+                    if (err || !testUsers) {
+                        testUsers = [];
+                    }
+                    return callback(null, list, testUsers);
+                });
+            });
+        };
+
+        getList(campaign.list, (err, list, testUsers) => {
+            if (err) {
                 req.flash('danger', err && err.message || err);
                 return res.redirect('/campaigns');
             }
 
             campaign.csrfToken = req.csrfToken();
+
             campaign.list = list;
+            campaign.testUsers = testUsers;
 
             campaign.isIdling = campaign.status === 1;
             campaign.isSending = campaign.status === 2;
@@ -315,17 +358,18 @@ router.get('/view/:id', passport.csrfProtection, (req, res) => {
 
             campaign.isNormal = campaign.type === 1 || campaign.type === 3;
             campaign.isRss = campaign.type === 2;
+            campaign.isTriggered = campaign.type === 4;
 
             campaign.isScheduled = campaign.scheduled && campaign.scheduled > new Date();
 
             // show only messages that weren't bounced as delivered
             campaign.delivered = campaign.delivered - campaign.bounced;
 
-            campaign.openRate = campaign.delivered ? Math.round((campaign.opened / campaign.delivered) * 10000)/100 : 0;
-            campaign.clicksRate = campaign.delivered ? Math.round((campaign.clicks / campaign.delivered) * 10000)/100 : 0;
-            campaign.bounceRate = campaign.delivered ? Math.round((campaign.bounced / campaign.delivered) * 10000)/100 : 0;
-            campaign.complaintRate = campaign.delivered ? Math.round((campaign.complained / campaign.delivered) * 10000)/100 : 0;
-            campaign.unsubscribeRate = campaign.delivered ? Math.round((campaign.unsubscribed / campaign.delivered) * 10000)/100 : 0;
+            campaign.openRate = campaign.delivered ? Math.round((campaign.opened / campaign.delivered) * 10000) / 100 : 0;
+            campaign.clicksRate = campaign.delivered ? Math.round((campaign.clicks / campaign.delivered) * 10000) / 100 : 0;
+            campaign.bounceRate = campaign.delivered ? Math.round((campaign.bounced / campaign.delivered) * 10000) / 100 : 0;
+            campaign.complaintRate = campaign.delivered ? Math.round((campaign.complained / campaign.delivered) * 10000) / 100 : 0;
+            campaign.unsubscribeRate = campaign.delivered ? Math.round((campaign.unsubscribed / campaign.delivered) * 10000) / 100 : 0;
 
             campaigns.getLinks(campaign.id, (err, links) => {
                 if (err) {
@@ -346,9 +390,21 @@ router.get('/view/:id', passport.csrfProtection, (req, res) => {
                 campaign.showLinks = req.query.tab === 'links';
                 res.render('campaigns/view', campaign);
             });
-
         });
     });
+});
+
+router.post('/preview/:id', passport.parseForm, passport.csrfProtection, (req, res) => {
+    let campaign = req.body.campaign;
+    let list = req.body.list;
+    let listId = req.body.listId;
+    let subscription = req.body.subscriber;
+
+    if (subscription === '_create') {
+        return res.redirect('/lists/subscription/' + encodeURIComponent(listId) + '/add/?is-test=true');
+    }
+
+    res.redirect('/archive/' + encodeURIComponent(campaign) + '/' + encodeURIComponent(list) + '/' + encodeURIComponent(subscription));
 });
 
 router.get('/opened/:id', passport.csrfProtection, (req, res) => {
@@ -403,8 +459,20 @@ router.get('/status/:id/:status', passport.csrfProtection, (req, res) => {
             return res.redirect('/campaigns');
         }
 
-        lists.get(campaign.list, (err, list) => {
-            if (err || !campaign) {
+        let getList = (listId, callback) => {
+            lists.get(listId, (err, list) => {
+                if (err) {
+                    return callback(err);
+                }
+                if (!list) {
+                    return callback(new Error('Selected list not found'));
+                }
+                return callback(null, list);
+            });
+        };
+
+        getList(campaign.list, (err, list) => {
+            if (err) {
                 req.flash('danger', err && err.message || err);
                 return res.redirect('/campaigns');
             }
@@ -429,8 +497,20 @@ router.get('/clicked/:id/:linkId', passport.csrfProtection, (req, res) => {
             return res.redirect('/campaigns');
         }
 
-        lists.get(campaign.list, (err, list) => {
-            if (err || !campaign) {
+        let getList = (listId, callback) => {
+            lists.get(listId, (err, list) => {
+                if (err) {
+                    return callback(err);
+                }
+                if (!list) {
+                    return callback(new Error('Selected list not found'));
+                }
+                return callback(null, list);
+            });
+        };
+
+        getList(campaign.list, (err, list) => {
+            if (err) {
                 req.flash('danger', err && err.message || err);
                 return res.redirect('/campaigns');
             }
