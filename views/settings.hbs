@@ -11,7 +11,7 @@
     <input type="hidden" name="_csrf" value="{{csrfToken}}">
 </form>
 
-<form class="form-horizontal" method="post" action="/settings/update">
+<form class="form-horizontal" id="settings-form" method="post" action="/settings/update">
 
     <input type="hidden" name="_csrf" value="{{csrfToken}}">
 
@@ -42,6 +42,17 @@
                     <label>
                         <input type="checkbox" name="disable-wysiwyg" {{#if disableWysiwyg}} checked {{/if}}> Disable WYSIWYG editor
                         <span class="help-block">If checked then message editor displays HTML code without the preview</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-sm-offset-2 col-sm-10">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" name="disable-confirmations" {{#if disableConfirmations}} checked {{/if}}> Disable subscription confirmation messages
+                        <span class="help-block">If checked then do not send a confirmation message that states the subscriber is now subscribed or unsubscribed. This does not disable double opt-in messages.</span>
                     </label>
                 </div>
             </div>
@@ -174,7 +185,7 @@
         </div>
 
         <div class="pull-right">
-            <button type="submit" form="smtp-verify" class="btn btn-info"><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Check SMTP config</button>
+            <button type="submit" id="verify-button" form="smtp-verify" class="btn btn-info" data-loading-text="Checking..." ><span class="glyphicon glyphicon-refresh" aria-hidden="true"></span> Check SMTP config</button>
         </div>
     </fieldset>
 
@@ -182,6 +193,16 @@
         <legend>
             Advanced SMTP settings
         </legend>
+
+        <div class="form-group">
+            <div class="col-sm-offset-2 col-xs-4">
+                <div class="checkbox">
+                    <label>
+                        <input type="checkbox" name="smtp-log" {{#if smtpLog}} checked {{/if}}> Log SMTP transactions
+                    </label>
+                </div>
+            </div>
+        </div>
 
         <div class="form-group">
             <div class="col-sm-offset-2 col-xs-4">
@@ -195,27 +216,25 @@
 
         <div class="form-group">
             <label for="smtp-max-connections" class="col-sm-2 control-label">Max connections</label>
-            <div class="col-sm-4">
-                <input type="number" class="form-control" name="smtp-max-connections" id="smtp-port" placeholder="The count of max connections, eg. 10" value="{{smtpMaxConnections}}">
+            <div class="col-sm-6">
+                <input type="number" class="form-control" name="smtp-max-connections" id="smtp-max-connections" placeholder="The count of max connections, eg. 10" value="{{smtpMaxConnections}}">
                 <span class="help-block">The count of maximum simultaneous connections to make against the SMTP server (defaults to 5)</span>
             </div>
         </div>
 
         <div class="form-group">
             <label for="smtp-max-messages" class="col-sm-2 control-label">Max messages</label>
-            <div class="col-sm-4">
-                <input type="number" class="form-control" name="smtp-max-messages" id="smtp-port" placeholder="The count of max messages, eg. 100" value="{{smtpMaxMessages}}">
-                <span class="help-block">The count of messages to send through a single connection before the connection is recreated (defaults to 100)</span>
+            <div class="col-sm-6">
+                <input type="number" class="form-control" name="smtp-max-messages" id="smtp-max-messages" placeholder="The count of max messages, eg. 100" value="{{smtpMaxMessages}}">
+                <span class="help-block">The number of messages to send through a single connection before the connection is closed and reopened (defaults to 100)</span>
             </div>
         </div>
 
         <div class="form-group">
-            <div class="col-sm-offset-2 col-xs-4">
-                <div class="checkbox">
-                    <label>
-                        <input type="checkbox" name="smtp-log" {{#if smtpLog}} checked {{/if}}> Log SMTP transactions
-                    </label>
-                </div>
+            <label for="smtp-throttling" class="col-sm-2 control-label">Throttling</label>
+            <div class="col-sm-6">
+                <input type="number" class="form-control" name="smtp-throttling" id="smtp-throttling" placeholder="Messages per hour eg. 1000" value="{{smtpThrottling}}">
+                <span class="help-block">Maximum number of messages to send in an hour. Leave empty or zero for no throttling. If your provider uses a different speed limit (<em>messages/minute</em> or <em>messages/second</em>) then convert this limit into <em>messages/hour</em> (1m/s => 3600m/h).</span>
             </div>
         </div>
     </fieldset>
